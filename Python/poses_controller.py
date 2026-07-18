@@ -1,4 +1,6 @@
 import bge
+import os
+import sys
 
 
 def update_armatures_animation():
@@ -50,4 +52,24 @@ def update_armatures_animation():
 
 
 
+# Direct-start mode bypasses the selector's startup message. Execute the
+# original loader once from this always-on controller before animating.
+_scene = bge.logic.getCurrentScene()
+_holder = _scene.objects.get("game_scene_script_holder")
+if _holder and not _holder.get("already_loaded", False):
+    _loader_path = os.path.join(bge.logic.expandPath("//"), "Python", "game_scene_start.py")
+    with open(_loader_path, "r", encoding="utf-8") as _loader_file:
+        exec(compile(_loader_file.read(), _loader_path, "exec"), globals(), globals())
+
 update_armatures_animation()
+
+# The existing pose controller runs every frame, making it the stable hook
+# for the browser bridge without adding fragile logic bricks to the blend.
+python_dir = os.path.join(bge.logic.expandPath("//"), "Python")
+if python_dir not in sys.path:
+    sys.path.insert(0, python_dir)
+try:
+    import web_bridge
+    web_bridge.tick()
+except Exception as exc:
+    print(f"[ANJALI] Web bridge tick failed: {exc}")

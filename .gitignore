@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.pyc
+.tools/
+.research/
+Data/web_frame.png
+Data/web_frame.pending.png
+.a-game-runtime.log
+.a-game-runtime.pid
+*.crash.txt

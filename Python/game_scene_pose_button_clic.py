@@ -1,5 +1,7 @@
 import bpy
 import bge
+import json
+import os
 
 cont = bge.logic.getCurrentController()
 owner = cont.owner
@@ -33,5 +35,31 @@ if mouse_clic.positive and mouse_over.positive:
     last_frame = max(end_man, end_woman)
     script_holder["pose_last_frame"] = last_frame
     print("pose_last_frame establecido a", last_frame)
+
+    # Update the Anjali / Trio Full roleplay steering card for the selected
+    # physical simulation. This stays deterministic and never narrates Roshan.
+    prompt_obj = bge.logic.getCurrentScene().objects.get("anjali_roleplay_prompt")
+    if prompt_obj:
+        pose_label = (female_pose or male_pose or "selected pose").lower()
+        roleplay_path = os.path.join(bge.logic.expandPath("//"), "Data", "anjali_roleplay.json")
+        try:
+            with open(roleplay_path, "r", encoding="utf-8") as roleplay_file:
+                roleplay = json.load(roleplay_file)
+            cards = roleplay.get("scene_cards", {})
+            if any(token in pose_label for token in ("idle", "stand", "start", "intro")):
+                phase = "setup"
+            elif any(token in pose_label for token in ("kiss", "touch", "tease")):
+                phase = "tease"
+            elif any(token in pose_label for token in ("fast", "hard")):
+                phase = "fast"
+            elif any(token in pose_label for token in ("finish", "orgasm", "cum")):
+                phase = "finish"
+            else:
+                phase = "slow"
+            direction = cards.get(phase, cards.get("slow", "Keep Anjali in character and leave Roshan's response open."))
+            prompt_obj["Text"] = f"POSE: {female_pose or male_pose}\n{direction}"
+        except Exception as exc:
+            prompt_obj["Text"] = f"POSE: {female_pose or male_pose}\nAnjali stays shy, duty-led and responsive. Roshan's next action remains open."
+            print(f"[WARN] Could not load Anjali roleplay card: {exc}")
 
 
