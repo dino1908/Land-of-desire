@@ -1,6 +1,17 @@
 import bge
+import bpy
 import os
 import sys
+
+
+ANIMATION_LAYER = 1
+
+
+def _action_range(action_name, fallback_end):
+    action = bpy.data.actions.get(action_name)
+    if action:
+        return float(action.frame_range[0]), float(action.frame_range[1])
+    return 0.0, max(float(fallback_end), 1.0)
 
 
 def update_armatures_animation():
@@ -11,45 +22,63 @@ def update_armatures_animation():
         return
 
     armature_names = [n.strip() for n in holder.get("Armatures", "").split("|") if n.strip()]
-    anim_speed  = holder["animation_speed"]
-    anim_frame  = holder["anim_frame"]
-    last_frame  = holder["pose_last_frame"]
-
-    male_pose   = holder.get("male_pose", "")
+    speed = max(float(holder.get("animation_speed", 1.0)), 0.05)
+    fallback_end = max(float(holder.get("pose_last_frame", 1.0)), 1.0)
+    male_pose = holder.get("male_pose", "")
     female_pose = holder.get("female_pose", "")
+    frames = []
 
     for name in armature_names:
-        kx_arm = scene.objects.get(name)
-        if not kx_arm or not hasattr(kx_arm, 'playAction'):
-#            print(f"[ADVERTENCIA] No se encontró armature: {name}")
+        armature = scene.objects.get(name)
+        if not armature or not hasattr(armature, "playAction"):
             continue
 
-        lname = name.lower()
-        if "female" in lname or "woman" in lname:
+        lower_name = name.lower()
+        if "female" in lower_name or "woman" in lower_name:
             action_name = female_pose
-        elif "male" in lname or "man" in lname:
+        elif "male" in lower_name or "man" in lower_name:
             action_name = male_pose
         else:
-#            print(f"[ADVERTENCIA] Género no detectado en: {name}")
             continue
-
         if not action_name:
-#            print(f"[ERROR] Pose no definida para {name}")
             continue
 
-        kx_arm.playAction(action_name, anim_frame, anim_frame, bge.logic.KX_ACTION_MODE_PLAY, 1)
+        start_frame, end_frame = _action_range(action_name, fallback_end)
+        current_action = armature.getActionName(ANIMATION_LAYER)
+        previous_speed = float(armature.get("anjali_action_speed", -1.0))
+        needs_restart = (
+            current_action != action_name
+            or not armature.isPlayingAction(ANIMATION_LAYER)
+            or abs(previous_speed - speed) > 0.0001
+        )
+        if needs_restart:
+            resume_frame = start_frame
+            if current_action == action_name:
+                try:
+                    resume_frame = armature.getActionFrame(ANIMATION_LAYER)
+                except Exception:
+                    pass
+            armature.stopAction(ANIMATION_LAYER)
+            armature.playAction(
+                action_name,
+                start_frame,
+                end_frame,
+                play_mode=bge.logic.KX_ACTION_MODE_LOOP,
+                speed=speed,
+                layer=ANIMATION_LAYER,
+                blendin=5,
+            )
+            if start_frame <= resume_frame <= end_frame:
+                armature.setActionFrame(resume_frame, ANIMATION_LAYER)
+            armature["anjali_action_speed"] = speed
 
-    # Asignar correctamente el nuevo frame
-    anim_frame = anim_frame + anim_speed
-    
-    if anim_frame > last_frame:
-        anim_frame = 0
-        
-    holder["anim_frame"] = anim_frame  # <--- CORRECTO
+        try:
+            frames.append(float(armature.getActionFrame(ANIMATION_LAYER)))
+        except Exception:
+            pass
 
- #   print("Frame actual:", anim_frame, " frame final:",last_frame)
-
-
+    if frames:
+        holder["anim_frame"] = sum(frames) / len(frames)
 
 
 # Direct-start mode bypasses the selector's startup message. Execute the

@@ -36,9 +36,11 @@
   <div id="status">Connecting to UPBGE…</div>
 </header>
 <main>
-  <section class="stage"><div class="badge">LIVE • FIXED 3D SIMULATION</div><img id="frame" alt="Live Anjali game stage" /></section>
+  <section class="stage"><div class="badge">LIVE • UPBGE SIMULATION</div><img id="frame" src="/stream" alt="Live Anjali game stage" /></section>
   <aside class="panel">
-    <h2>Scene direction</h2><div class="prompt" id="prompt">Loading Anjali…</div>
+    <h2>How to play</h2>
+    <div class="rule" style="margin-top:0"><strong>1.</strong> Pick a physical pose. <strong>2.</strong> Pick a phase to change the movement speed and roleplay direction. <strong>3.</strong> Fine-tune with the speed slider. The selected pose loops continuously.</div>
+    <h2 style="margin-top:16px">Scene direction</h2><div class="prompt" id="prompt">Loading Anjali…</div>
     <label>Roleplay phase</label>
     <div class="grid phases" id="phases"></div>
     <label>Physical pose</label>
@@ -55,8 +57,7 @@ const phases=['setup','care','tease','slow','fast','finish','aftercare'];
 for(const phase of phases){ const b=document.createElement('button'); b.textContent=phase; b.onclick=()=>post('/api/phase',{phase}); $('#phases').appendChild(b); }
 $('#speed').oninput=e=>{ $('#speedValue').textContent=Number(e.target.value).toFixed(1)+'×'; post('/api/speed',{speed:Number(e.target.value)}); };
 async function refreshState(){ try { const state=await fetch('/api/state',{cache:'no-store'}).then(r=>r.json()); $('#status').textContent=state.ready?`${state.character} • ${state.scene} • ${state.pose||'choose a pose'}`:'UPBGE running • loading scene'; $('#prompt').textContent=state.prompt; $('#speed').value=state.speed; $('#speedValue').textContent=Number(state.speed).toFixed(1)+'×'; const sig=JSON.stringify(state.poses); if(sig!==lastPoseSig){ lastPoseSig=sig; $('#poses').replaceChildren(); for(const pose of state.poses){ const b=document.createElement('button'); b.textContent=pose.split(':')[0].replaceAll('_',' '); b.dataset.pose=pose; b.onclick=()=>post('/api/pose',{pose}); $('#poses').appendChild(b); } } document.querySelectorAll('#poses button').forEach(b=>b.classList.toggle('active',b.dataset.pose===state.pose)); } catch(e){ $('#status').textContent='Waiting for UPBGE bridge…'; } }
-function refreshFrame(){ $('#frame').src='/frame.png?t='+Date.now(); }
-setInterval(refreshState,500); setInterval(refreshFrame,220); refreshState(); refreshFrame();
+setInterval(refreshState,500); refreshState();
 </script>
 </body>
 </html>
